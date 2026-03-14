@@ -209,7 +209,7 @@ lines.insert(insert_at, '- [ ] $title$tags\n')
 open('$pf', 'w').writelines(lines)
 "
   echo -e "${GREEN}✓ Added step to Phase $phase_num: $title${RESET}"
-  [[ -n "$tags" ]] && echo -e "${DIM}  Tags:$tags${RESET}"
+  if [[ -n "$tags" ]]; then echo -e "${DIM}  Tags:$tags${RESET}"; fi
 }
 
 cmd_mark() {
