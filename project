@@ -5,8 +5,14 @@
 
 set -euo pipefail
 
-# Resolve lib/ relative to this script's location
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve lib/ relative to this script's real location (follow symlinks)
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
 
 source "$LIB_DIR/helpers.sh"
