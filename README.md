@@ -37,15 +37,7 @@ Both are pre-installed on macOS and most Linux distributions.
 
 ## Installation
 
-### Option 1: Copy to PATH
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/TinaHeiligers/project-cli/main/project -o project
-chmod +x project
-sudo mv project /usr/local/bin/project
-```
-
-### Option 2: Clone and symlink
+### Clone and symlink (recommended)
 
 ```bash
 git clone https://github.com/TinaHeiligers/project-cli.git
@@ -54,7 +46,9 @@ chmod +x project
 sudo ln -sf "$(pwd)/project" /usr/local/bin/project
 ```
 
-### Option 3: Add to PATH
+Symlink is preferred — `project` now sources `lib/` modules relative to itself, so the repo directory must exist.
+
+### Add to PATH (alternative)
 
 ```bash
 git clone https://github.com/TinaHeiligers/project-cli.git
@@ -153,9 +147,10 @@ project done  "Name" <phase#> <step#> --repo <r> --target <t>
 
 ### Notes
 
-Attach timestamped notes at any level — they show inline in `project status`.
+Attach timestamped notes at any level — they show inline in `project status`. Each note gets a stable `#id` for easy reference.
 
 ```bash
+# Add notes
 project note "Name" "text"                                    # Project-level
 project note "Name" <phase#> "text"                           # Phase-level
 project note "Name" <phase#> <step#> "text"                   # Step-level
@@ -163,17 +158,41 @@ project note "Name" <phase#> <step#> "text" --repo <r>        # Repo-level
 project note "Name" <phase#> <step#> "text" \
   --repo <r> --target <t>                                     # Repo x target
 
+# Manage notes
+project note "Name" delete <id>                               # Delete by ID
+project note "Name" delete --before 2026-03-01                # Bulk delete by date
+project note "Name" delete --all --phase 2                    # Delete all in Phase 2
+project note "Name" archive <id>                              # Archive (preserve but hide)
+project note "Name" archive --before 2026-03-01               # Bulk archive by date
+project note "Name" edit <id> "updated text"                  # Edit a note
+
+# View notes
 project notes "Name"                                          # List all notes
+project notes "Name" --archived                               # List archived notes
 ```
 
 ### Viewing
 
 ```bash
-project status "Name"     # Full project tree with rollup icons
-project list              # All projects
-project edit "Name"       # Open plan.md in $EDITOR
-project guide             # Detailed usage guide in terminal
-project help              # Command reference
+project status "Name"                    # Tree with notes from last 7 days
+project status "Name" --all-notes        # Tree with all notes
+project status "Name" --no-notes         # Tree without notes
+project status "Name" --notes-since 2026-03-20  # Notes since date
+project status "Name" --compact          # One line per phase with counts
+project list                             # Active projects
+project list --archived                  # Archived projects
+project edit "Name"                      # Open plan.md in $EDITOR
+project guide                            # Detailed usage guide
+project help                             # Command reference
+```
+
+### Project management
+
+```bash
+project archive "Name"                   # Hide from project list
+project unarchive "Name"                 # Restore to project list
+project migrate "Name"                   # Add note IDs (for existing projects)
+project migrate --all                    # Migrate all projects
 ```
 
 ## AI assistant integration
@@ -199,11 +218,21 @@ All data lives in `~/.projects/<project-name>/`:
 ~/.projects/My Feature/
   plan.md          # Phase and step hierarchy (Markdown)
   status.json      # Progress state per tracking unit
-  meta.json        # Repos and targets lists
-  notes.json       # Timestamped notes
+  meta.json        # Repos, targets, archived flag
+  notes.json       # Timestamped notes with IDs + archive section
 ```
 
 Files are human-readable and editable. Back up `~/.projects/` or sync it with iCloud/Dropbox/dotfiles to keep it across machines.
+
+### Upgrading from older versions
+
+If you have existing projects from before note IDs were added, run:
+
+```bash
+project migrate --all
+```
+
+This adds stable IDs to all existing notes. It's safe to run multiple times.
 
 ## License
 
