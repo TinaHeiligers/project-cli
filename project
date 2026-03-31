@@ -10,12 +10,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
 
 source "$LIB_DIR/helpers.sh"
+source "$LIB_DIR/python_helpers.sh"
 source "$LIB_DIR/meta.sh"
 source "$LIB_DIR/plan.sh"
 source "$LIB_DIR/notes.sh"
 source "$LIB_DIR/status.sh"
 source "$LIB_DIR/list.sh"
 source "$LIB_DIR/guide.sh"
+source "$LIB_DIR/migrate.sh"
 
 # ─── Router ───────────────────────────────────────────────────────────────────
 CMD="${1:-help}"
@@ -35,6 +37,9 @@ case "$CMD" in
   note)   cmd_note "$@" ;;
   notes)  cmd_notes "$@" ;;
   edit)   cmd_edit "$@" ;;
+  archive)   cmd_archive "$@" ;;
+  unarchive) cmd_unarchive "$@" ;;
+  migrate)   cmd_migrate "$@" ;;
   guide)  cmd_guide ;;
   help|--help|-h) cmd_help ;;
   *) die "Unknown command '$CMD'. Run: project help" ;;

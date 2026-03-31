@@ -33,12 +33,30 @@ cmd_help() {
   printf '  project note "Name" <phase#> <step#> "text"        Add step-level note\n'
   printf '  project note "Name" <phase#> <step#> "text" \\\n'
   printf '    --repo <r> --target <t>                          Add note to repo/target\n'
+  printf '  project note "Name" delete <id>                    Delete note by ID\n'
+  printf '  project note "Name" delete --before <date>         Delete notes before date\n'
+  printf '  project note "Name" delete --all                   Delete all notes (scope with --phase/--step)\n'
+  printf '  project note "Name" archive <id>                   Archive note by ID\n'
+  printf '  project note "Name" archive --before <date>        Archive notes before date\n'
+  printf '  project note "Name" edit <id> "new text"           Edit a note\n'
   printf '  project notes "Name"                               List all notes\n'
+  printf '  project notes "Name" --archived                    List archived notes\n'
   printf "\n"
   printf "${B}VIEW COMMANDS${R}\n"
-  printf '  project status "Name"                          Show full project tree\n'
-  printf '  project list                                   List all projects\n'
+  printf '  project status "Name"                          Show tree (notes from last 7 days)\n'
+  printf '  project status "Name" --all-notes              Show tree with all notes\n'
+  printf '  project status "Name" --no-notes               Show tree without notes\n'
+  printf '  project status "Name" --notes-since <date>     Show notes since date\n'
+  printf '  project status "Name" --compact                One line per phase\n'
+  printf '  project list                                   List active projects\n'
+  printf '  project list --archived                        List archived projects\n'
   printf '  project edit "Name"                            Open plan.md in $EDITOR\n'
+  printf "\n"
+  printf "${B}PROJECT MANAGEMENT${R}\n"
+  printf '  project archive "Name"                         Hide from project list\n'
+  printf '  project unarchive "Name"                       Restore to project list\n'
+  printf '  project migrate "Name"                         Migrate notes to use IDs\n'
+  printf '  project migrate --all                          Migrate all projects\n'
   printf "\n"
   printf "${B}EXAMPLE${R}\n"
   printf '  See: project guide\n'

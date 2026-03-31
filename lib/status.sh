@@ -2,8 +2,20 @@
 # status.sh — Project status tree display
 
 cmd_status() {
-  local name="${1:-}"; [[ -n "$name" ]] || die "Usage: project status \"<project>\""
+  local name="${1:-}"; [[ -n "$name" ]] || die "Usage: project status \"<project>\" [--no-notes] [--notes-since <date>] [--all-notes] [--compact]"
   require_project "$name"
+  shift
+
+  local notes_mode="default" notes_since="" compact=false
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --no-notes)    notes_mode="none";    shift ;;
+      --all-notes)   notes_mode="all";     shift ;;
+      --notes-since) notes_mode="since"; notes_since="${2:-}"; shift 2 ;;
+      --compact)     compact=true;         shift ;;
+      *) die "Unknown option '$1'" ;;
+    esac
+  done
 
   local pf; pf=$(plan_file "$name")
   local sf; sf=$(status_file "$name")
@@ -12,10 +24,14 @@ cmd_status() {
 
   echo -e "\n${BOLD}${ICON_PROJECT} $name${RESET}"
 
-  python3 - "$pf" "$sf" "$mf" "$nf" <<'PYEOF'
+  python3 - "$pf" "$sf" "$mf" "$nf" "$notes_mode" "$notes_since" "$compact" <<'PYEOF'
 import json, sys, re, os
+from datetime import datetime, timedelta
 
 pf, sf, mf, nf = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+notes_mode = sys.argv[5]
+notes_since = sys.argv[6]
+compact = sys.argv[7] == "true"
 status = json.load(open(sf)) if os.path.exists(sf) else {}
 meta   = json.load(open(mf)) if os.path.exists(mf) else {}
 notes  = json.load(open(nf)) if os.path.exists(nf) else {}
@@ -44,9 +60,33 @@ def rollup_icon(statuses):
     return TODO
 
 NOTE_ICON = "📝"
+
+# Determine date cutoff for notes
+if notes_mode == "none" or compact:
+    date_cutoff = None
+    show_notes = False
+elif notes_mode == "all":
+    date_cutoff = None
+    show_notes = True
+elif notes_mode == "since":
+    date_cutoff = notes_since
+    show_notes = True
+else:  # default: last 7 days
+    date_cutoff = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+    show_notes = True
+
+hidden_count = 0
+
 def print_notes(key, prefix):
+    global hidden_count
+    if not show_notes:
+        return
     for note in notes.get(key, []):
-        print(f"{prefix}{NOTE_ICON} {DIM}{note['date']}{RESET} {note['text']}")
+        if date_cutoff and note["date"] < date_cutoff:
+            hidden_count += 1
+            continue
+        nid = note.get('id', '?')
+        print(f"{prefix}{NOTE_ICON} #{nid} {DIM}{note['date']}{RESET} {note['text']}")
 
 # Print epic-level repo/target header
 if repos:
@@ -146,33 +186,42 @@ for pi, phase in enumerate(phases):
             step_lines.append((sbranch, sconnector, icon(s), step["title"], [], "simple"))
 
     phase_icon = rollup_icon(phase_statuses) if phase_statuses else TODO
-    print(f"{branch} {phase_icon} {BOLD}Phase {pn}: {phase['title']}{RESET}")
-    print_notes(f"p{pn}", connector)
+    done_in_phase = sum(1 for s in phase_statuses if s == "done")
+    total_in_phase = len(phase_statuses)
 
-    for idx, (sbranch, sconnector, step_icon, title, sub_lines, mode) in enumerate(step_lines):
-        sn = idx + 1
-        is_last = (idx == len(step_lines) - 1)
-        step_prefix = connector + ("    " if is_last else "│   ")
-        print(f"{connector}{sbranch} {step_icon} {title}")
-        print_notes(f"p{pn}_s{sn}", step_prefix)
+    if compact:
+        print(f"{branch} {phase_icon} {BOLD}Phase {pn}: {phase['title']}{RESET} {DIM}({done_in_phase}/{total_in_phase}){RESET}")
+    else:
+        print(f"{branch} {phase_icon} {BOLD}Phase {pn}: {phase['title']}{RESET}")
+        print_notes(f"p{pn}", connector)
 
-        if mode in ("matrix", "repos"):
-            sub_connector = connector + ("    " if is_last else "│   ")
-            for li, (r, t, s) in enumerate(sub_lines):
-                is_last_sub = (li == len(sub_lines) - 1)
-                subbranch = "└──" if is_last_sub else "├──"
-                sub_note_prefix = sub_connector + ("    " if is_last_sub else "│   ")
-                if t:
-                    print(f"{sub_connector}{subbranch} {icon(s)} [{r}] → {t}")
-                    print_notes(f"p{pn}_s{sn}_r{r}_t{t}", sub_note_prefix)
-                else:
-                    print(f"{sub_connector}{subbranch} {icon(s)} [{r}]")
-                    print_notes(f"p{pn}_s{sn}_r{r}", sub_note_prefix)
+        for idx, (sbranch, sconnector, step_icon, title, sub_lines, mode) in enumerate(step_lines):
+            sn = idx + 1
+            is_last = (idx == len(step_lines) - 1)
+            step_prefix = connector + ("    " if is_last else "│   ")
+            print(f"{connector}{sbranch} {step_icon} {title}")
+            print_notes(f"p{pn}_s{sn}", step_prefix)
+
+            if mode in ("matrix", "repos"):
+                sub_connector = connector + ("    " if is_last else "│   ")
+                for li, (r, t, s) in enumerate(sub_lines):
+                    is_last_sub = (li == len(sub_lines) - 1)
+                    subbranch = "└──" if is_last_sub else "├──"
+                    sub_note_prefix = sub_connector + ("    " if is_last_sub else "│   ")
+                    if t:
+                        print(f"{sub_connector}{subbranch} {icon(s)} [{r}] → {t}")
+                        print_notes(f"p{pn}_s{sn}_r{r}_t{t}", sub_note_prefix)
+                    else:
+                        print(f"{sub_connector}{subbranch} {icon(s)} [{r}]")
+                        print_notes(f"p{pn}_s{sn}_r{r}", sub_note_prefix)
 
 if not phases:
     print("    (no phases yet)")
 
-print(f"\n{DIM}Progress: {done_units}/{total_units} units done, {wip_units} in progress{RESET}")
+progress = f"\n{DIM}Progress: {done_units}/{total_units} units done, {wip_units} in progress{RESET}"
+if hidden_count > 0:
+    progress += f"\n{DIM}({hidden_count} older note(s) hidden — use --all-notes to show){RESET}"
+print(progress)
 PYEOF
   echo ""
 }
