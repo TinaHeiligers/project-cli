@@ -24,7 +24,14 @@ cmd_list() {
   fi
 
   local shown=0
+  # Skip non-project directories
+  local skip_dirs=(".git" "lib")
+
   for p in "${projects[@]}"; do
+    local skip=false
+    for s in "${skip_dirs[@]}"; do [[ "$p" == "$s" ]] && skip=true; done
+    [[ "$skip" == "true" ]] && continue
+
     local sf; sf=$(status_file "$p")
     local mf; mf=$(meta_file "$p")
 
